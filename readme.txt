@@ -2,7 +2,7 @@
 Contributors: mindedgedevel, knattk
 Tags: cloudflare, cache, purge, performance, admin
 Requires at least: 6.0
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.4
 Stable tag: 0.1.0
 License: GPLv2 or later
@@ -18,12 +18,6 @@ Purge Everything - Cloudflare adds a settings page in WordPress admin where admi
 * Trigger a full Cloudflare cache purge with one click
 * View status notices for purge results
 
-The plugin includes basic hardening for admin actions:
-
-* Capability checks (`manage_options`)
-* Nonce verification for purge requests
-* Input sanitization for stored settings
-* Cooldown and lock logic to reduce repeated purge requests
 
 == External services ==
 

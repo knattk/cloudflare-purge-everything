@@ -36,7 +36,8 @@ class purgecf_CacheManager {
     }
 
     public function get_settings() {
-        return get_option($this->option_name);
+        $settings = get_option($this->option_name, []);
+        return is_array($settings) ? $settings : [];
     }
 
     public function mask_zone_id($zone_id) {

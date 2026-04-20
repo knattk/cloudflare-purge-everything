@@ -35,14 +35,14 @@ class purgecf_Plugin {
             $this->cache_manager->redirect_with_status('rate_limited');
         }
 
-        $this->cache_manager->start_cooldown();
-
         $options = $this->cache_manager->get_settings();
         if (!$options || empty($options['api_key']) || empty($options['zone_id'])) {
             $this->cache_manager->release_purge_lock();
             $this->cache_manager->log_audit_event('purge', 'blocked', ['reason' => 'missing_config']);
             $this->cache_manager->redirect_with_status('missing_config');
         }
+
+        $this->cache_manager->start_cooldown();
 
         $api_client = new purgecf_API();
         $is_purged = $api_client->purge_everything($options['zone_id'], $options['api_key']);
