@@ -42,7 +42,7 @@ class purgecf_Admin {
         $options = get_option($this->option_name, []);
         $options = is_array($options) ? $options : [];
         $has_zone_id = !empty($options['zone_id']);
-        $has_api_key = !empty($options['api_key']);
+        $has_api_key = $this->has_valid_api_token($options);
         $is_ready = $has_zone_id && $has_api_key;
         $is_cooldown = (bool) get_transient($this->purge_cooldown_transient);
 
@@ -75,7 +75,7 @@ class purgecf_Admin {
         $options = get_option($this->option_name, []);
         $options = is_array($options) ? $options : [];
         $has_zone_id = !empty($options['zone_id']);
-        $has_api_key = !empty($options['api_key']);
+        $has_api_key = $this->has_valid_api_token($options);
         $is_ready = $has_zone_id && $has_api_key;
         $is_cooldown = (bool) get_transient($this->purge_cooldown_transient);
 
@@ -147,6 +147,14 @@ class purgecf_Admin {
         $existing = get_option($this->option_name, []);
         $existing_zone_id = isset($existing['zone_id']) ? (string) $existing['zone_id'] : '';
         $existing_api_key = isset($existing['api_key']) ? (string) $existing['api_key'] : '';
+        $existing_api_key_plain = purgecf_Crypto::decrypt_api_key($existing_api_key);
+        if (
+            $existing_api_key !== ''
+            && !purgecf_Crypto::is_encrypted_api_key($existing_api_key)
+            && preg_match($this->api_token_pattern, $existing_api_key_plain)
+        ) {
+            $existing_api_key = purgecf_Crypto::encrypt_api_key($existing_api_key_plain);
+        }
 
         $zone_id = isset($settings['zone_id']) ? strtolower(trim(sanitize_text_field($settings['zone_id']))) : '';
         if (!preg_match($this->zone_id_pattern, $zone_id)) {
@@ -171,7 +179,7 @@ class purgecf_Admin {
                     esc_html__('Cloudflare API Token format is invalid.', 'cf-purge-everything')
                 );
             } else {
-                $api_key = $api_key_input;
+                $api_key = purgecf_Crypto::encrypt_api_key($api_key_input);
             }
         }
 
@@ -186,7 +194,8 @@ class purgecf_Admin {
         $options = is_array($options) ? $options : [];
         $saved_zone_id = isset($options['zone_id']) ? (string) $options['zone_id'] : '';
         $has_saved_zone_id = $saved_zone_id !== '';
-        $has_saved_api_token = !empty($options['api_key']) && preg_match($this->api_token_pattern, (string) $options['api_key']);
+        $needs_api_key_reconfiguration = $this->needs_api_key_reconfiguration($options);
+        $has_saved_api_token = $this->has_valid_api_token($options);
         $is_connection_ready = $has_saved_zone_id && $has_saved_api_token;
         $api_key_display_value = $has_saved_api_token ? $this->masked_api_token_value : '';
         $nonce_verified = isset($_GET['purgecf_cf_purge_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['purgecf_cf_purge_nonce'])), 'purgecf_cf_purge_redirect_nonce');
@@ -195,6 +204,9 @@ class purgecf_Admin {
             <h1>Cloudflare Purge</h1>
 
             <?php settings_errors($this->option_name); ?>
+            <?php if ($needs_api_key_reconfiguration) : ?>
+                <div class="notice notice-warning"><p>Stored Cloudflare API key could not be decrypted. This can happen if AUTH_SALT changed. Please enter a new API key and save settings.</p></div>
+            <?php endif; ?>
             <?php if ($nonce_verified && isset($_GET['success'])) : ?>
                 <div class="notice notice-success is-dismissible"><p>Cloudflare cache successfully purged.</p></div>
             <?php elseif ($nonce_verified && isset($_GET['rate_limited'])) : ?>
@@ -338,5 +350,27 @@ class purgecf_Admin {
         $url = add_query_arg('purgecf_cf_purge_nonce', $nonce, $url);
         wp_safe_redirect($url);
         exit;
+    }
+
+    private function has_valid_api_token($options) {
+        if (!is_array($options) || empty($options['api_key'])) {
+            return false;
+        }
+
+        $plain_api_key = purgecf_Crypto::decrypt_api_key((string) $options['api_key']);
+        return $plain_api_key !== '' && (bool) preg_match($this->api_token_pattern, $plain_api_key);
+    }
+
+    private function needs_api_key_reconfiguration($options) {
+        if (!is_array($options) || empty($options['api_key'])) {
+            return false;
+        }
+
+        $stored_api_key = (string) $options['api_key'];
+        if (!purgecf_Crypto::is_encrypted_api_key($stored_api_key)) {
+            return false;
+        }
+
+        return purgecf_Crypto::decrypt_api_key($stored_api_key) === '';
     }
 }

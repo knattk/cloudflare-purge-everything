@@ -58,9 +58,6 @@ class purgecf_CacheManager {
             'user_login' => $user instanceof WP_User ? $user->user_login : '',
             'ip' => $this->get_request_ip(),
         ], $context);
-
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Audit logging for security events
-        error_log('[purgecf_cf-purge-everything] ' . wp_json_encode($payload));
     }
 
     private function get_request_ip() {

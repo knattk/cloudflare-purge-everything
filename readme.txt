@@ -1,5 +1,5 @@
 === Purge Everything - Cloudflare ===
-Contributors: mindedgedevel, knattk
+Contributors: Mind Edge, knattk
 Tags: cloudflare, cache, purge, performance, admin
 Requires at least: 6.0
 Tested up to: 6.9

@@ -36,7 +36,10 @@ class purgecf_Plugin {
         }
 
         $options = $this->cache_manager->get_settings();
-        if (!$options || empty($options['api_key']) || empty($options['zone_id'])) {
+        $zone_id = isset($options['zone_id']) ? (string) $options['zone_id'] : '';
+        $api_key = isset($options['api_key']) ? purgecf_Crypto::decrypt_api_key((string) $options['api_key']) : '';
+
+        if ($zone_id === '' || $api_key === '') {
             $this->cache_manager->release_purge_lock();
             $this->cache_manager->log_audit_event('purge', 'blocked', ['reason' => 'missing_config']);
             $this->cache_manager->redirect_with_status('missing_config');
@@ -45,20 +48,20 @@ class purgecf_Plugin {
         $this->cache_manager->start_cooldown();
 
         $api_client = new purgecf_API();
-        $is_purged = $api_client->purge_everything($options['zone_id'], $options['api_key']);
+        $is_purged = $api_client->purge_everything($zone_id, $api_key);
 
         if (!$is_purged) {
             $this->cache_manager->release_purge_lock();
             $this->cache_manager->log_audit_event('purge', 'failed', [
                 'reason' => $api_client->get_last_error_code(),
-                'zone_hint' => $this->cache_manager->mask_zone_id($options['zone_id']),
+                'zone_hint' => $this->cache_manager->mask_zone_id($zone_id),
             ]);
             $this->cache_manager->redirect_with_status('error');
         }
 
         $this->cache_manager->release_purge_lock();
         $this->cache_manager->log_audit_event('purge', 'success', [
-            'zone_hint' => $this->cache_manager->mask_zone_id($options['zone_id']),
+            'zone_hint' => $this->cache_manager->mask_zone_id($zone_id),
         ]);
 
         $this->cache_manager->redirect_with_status('success');

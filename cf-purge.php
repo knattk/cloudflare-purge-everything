@@ -3,7 +3,7 @@
  * Plugin Name: Purge Everything - Cloudflare
  * Description: Purge Everything from Cloudflare cache with a single click from WordPress admin.
  * Version: 0.1.0
- * Author: Mind Edge Team
+ * Author: Mind Edge
  * Author URI: https://github.com/mindedgedevel
  * License: GPLv2
  */
@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 require_once plugin_dir_path(__FILE__) . 'includes/class-cf-api.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-crypto.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-admin.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-cache-manager.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-plugin.php';
