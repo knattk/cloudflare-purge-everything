@@ -147,13 +147,17 @@ class PurgeCF_Admin {
         $existing = get_option($this->option_name, []);
         $existing_zone_id = isset($existing['zone_id']) ? (string) $existing['zone_id'] : '';
         $existing_api_key = isset($existing['api_key']) ? (string) $existing['api_key'] : '';
-        $existing_api_key_plain = PurgeCF_Crypto::decrypt_api_key($existing_api_key);
-        if (
-            $existing_api_key !== ''
-            && !PurgeCF_Crypto::is_encrypted_api_key($existing_api_key)
-            && preg_match($this->api_token_pattern, $existing_api_key_plain)
-        ) {
-            $existing_api_key = PurgeCF_Crypto::encrypt_api_key($existing_api_key_plain);
+        
+        // Detect if existing key is plaintext and needs encryption
+        if ($existing_api_key !== '' && !PurgeCF_Crypto::is_encrypted_api_key($existing_api_key)) {
+            $existing_api_key_plain = PurgeCF_Crypto::decrypt_api_key($existing_api_key);
+            if (preg_match($this->api_token_pattern, $existing_api_key_plain)) {
+                $encrypted_attempt = PurgeCF_Crypto::encrypt_api_key($existing_api_key_plain);
+                if (PurgeCF_Crypto::is_encrypted_api_key($encrypted_attempt)) {
+                    $existing_api_key = $encrypted_attempt;
+                }
+                // If encryption fails, keep plaintext as fallback for this load
+            }
         }
 
         $zone_id = isset($settings['zone_id']) ? strtolower(trim(sanitize_text_field($settings['zone_id']))) : '';
@@ -166,6 +170,7 @@ class PurgeCF_Admin {
 
         $api_key_input = isset($settings['api_key']) ? trim((string) $settings['api_key']) : '';
         $api_key = $existing_api_key;
+        $encryption_failed = false;
 
         if ($api_key_input !== '') {
             if ($existing_api_key !== '' && $api_key_input === $this->masked_api_token_value) {
@@ -173,11 +178,28 @@ class PurgeCF_Admin {
             } elseif (!preg_match($this->api_token_pattern, $api_key_input)) {
                 $has_invalid_input = true;
             } else {
-                $api_key = PurgeCF_Crypto::encrypt_api_key($api_key_input);
+                $encrypted_key = PurgeCF_Crypto::encrypt_api_key($api_key_input);
+                // Check if encryption actually succeeded (encrypted keys have the encryption prefix)
+                if (PurgeCF_Crypto::is_encrypted_api_key($encrypted_key)) {
+                    $api_key = $encrypted_key;
+                } else {
+                    // Encryption failed silently - do not save plaintext key
+                    $encryption_failed = true;
+                    $has_invalid_input = true;
+                    $api_key = $existing_api_key;
+                }
             }
         }
 
-        if ($has_invalid_input) {
+        if ($encryption_failed) {
+            $this->add_unique_settings_error(
+                $this->option_name,
+                'encryption_failed',
+                esc_html__('Failed to encrypt API Token. Please ensure openssl is available and PHP AUTH_SALT is configured. Your API Token was not saved.', 'cf-purge-everything')
+            );
+        }
+
+        if ($has_invalid_input && !$encryption_failed) {
             $this->add_unique_settings_error(
                 $this->option_name,
                 'invalid_api_key',
@@ -197,6 +219,7 @@ class PurgeCF_Admin {
         $saved_zone_id = isset($options['zone_id']) ? (string) $options['zone_id'] : '';
         $has_saved_zone_id = $saved_zone_id !== '';
         $needs_api_key_reconfiguration = $this->needs_api_key_reconfiguration($options);
+        $has_plaintext_api_key = $this->has_plaintext_api_key($options);
         $has_saved_api_token = $this->has_valid_api_token($options);
         $is_connection_ready = $has_saved_zone_id && $has_saved_api_token;
         $api_key_display_value = $has_saved_api_token ? $this->masked_api_token_value : '';
@@ -208,6 +231,9 @@ class PurgeCF_Admin {
             <?php settings_errors($this->option_name); ?>
             <?php if ($needs_api_key_reconfiguration) : ?>
                 <div class="notice notice-warning"><p>Stored Cloudflare API key could not be decrypted. This can happen if AUTH_SALT changed. Please enter a new API key and save settings.</p></div>
+            <?php endif; ?>
+            <?php if ($has_plaintext_api_key) : ?>
+                <div class="notice notice-error"><p><strong>Security Warning:</strong> Your Cloudflare API key is stored in plaintext. This indicates an encryption error. Please re-enter your API key to encrypt it properly. You may need to verify that OpenSSL is available on your server.</p></div>
             <?php endif; ?>
             <?php if ($nonce_verified && isset($_GET['success'])) : ?>
                 <div class="notice notice-success is-dismissible"><p>Cloudflare cache successfully purged.</p></div>
@@ -396,5 +422,19 @@ class PurgeCF_Admin {
         }
 
         return PurgeCF_Crypto::decrypt_api_key($stored_api_key) === '';
+    }
+
+    private function has_plaintext_api_key($options) {
+        if (!is_array($options) || empty($options['api_key'])) {
+            return false;
+        }
+
+        $stored_api_key = (string) $options['api_key'];
+        // If key is not encrypted but looks like a valid token format, it's plaintext
+        if (!PurgeCF_Crypto::is_encrypted_api_key($stored_api_key)) {
+            return (bool) preg_match($this->api_token_pattern, $stored_api_key);
+        }
+
+        return false;
     }
 }
