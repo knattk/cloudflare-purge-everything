@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class purgecf_API {
+class PurgeCF_API {
     private $last_error_code = 'none';
 
     public function purge_everything($zone_id, $api_key) {

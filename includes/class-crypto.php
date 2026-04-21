@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class purgecf_Crypto {
+class PurgeCF_Crypto {
     private const API_KEY_ENCRYPTION_PREFIX = 'enc:v1:';
     private const API_KEY_CIPHER = 'aes-256-cbc';
 

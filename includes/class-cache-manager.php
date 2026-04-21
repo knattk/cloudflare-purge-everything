@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class purgecf_CacheManager {
+class PurgeCF_CacheManager {
     private $purge_lock_transient = 'purgecf_cf_purge_everything_lock';
     private $purge_cooldown_transient = 'purgecf_cf_purge_everything_cooldown';
     private $purge_lock_ttl = 30;

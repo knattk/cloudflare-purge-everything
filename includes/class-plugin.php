@@ -9,10 +9,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class purgecf_Plugin {
+class PurgeCF_Plugin {
     private $cache_manager;
 
-    public function __construct(purgecf_CacheManager $cache_manager) {
+    public function __construct(PurgeCF_CacheManager $cache_manager) {
         $this->cache_manager = $cache_manager;
         add_action('admin_post_purgecf_purge_cloudflare_cache', [$this, 'purge_cache']);
     }
@@ -37,7 +37,7 @@ class purgecf_Plugin {
 
         $options = $this->cache_manager->get_settings();
         $zone_id = isset($options['zone_id']) ? (string) $options['zone_id'] : '';
-        $api_key = isset($options['api_key']) ? purgecf_Crypto::decrypt_api_key((string) $options['api_key']) : '';
+        $api_key = isset($options['api_key']) ? PurgeCF_Crypto::decrypt_api_key((string) $options['api_key']) : '';
 
         if ($zone_id === '' || $api_key === '') {
             $this->cache_manager->release_purge_lock();
@@ -47,7 +47,7 @@ class purgecf_Plugin {
 
         $this->cache_manager->start_cooldown();
 
-        $api_client = new purgecf_API();
+        $api_client = new PurgeCF_API();
         $is_purged = $api_client->purge_everything($zone_id, $api_key);
 
         if (!$is_purged) {
