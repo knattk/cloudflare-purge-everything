@@ -171,6 +171,7 @@ class PurgeCF_Admin {
         $api_key_input = isset($settings['api_key']) ? trim((string) $settings['api_key']) : '';
         $api_key = $existing_api_key;
         $encryption_failed = false;
+        $enforce_https = !empty($settings['enforce_https']);
 
         if ($api_key_input !== '') {
             if ($existing_api_key !== '' && $api_key_input === $this->masked_api_token_value) {
@@ -210,6 +211,7 @@ class PurgeCF_Admin {
         return [
             'zone_id' => $zone_id,
             'api_key' => $api_key,
+            'enforce_https' => $enforce_https,
         ];
     }
 
@@ -223,6 +225,7 @@ class PurgeCF_Admin {
         $has_saved_api_token = $this->has_valid_api_token($options);
         $is_connection_ready = $has_saved_zone_id && $has_saved_api_token;
         $api_key_display_value = $has_saved_api_token ? $this->masked_api_token_value : '';
+        $enforce_https = !array_key_exists('enforce_https', $options) ? true : (bool) $options['enforce_https'];
         $nonce_verified = isset($_GET['purgecf_cf_purge_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['purgecf_cf_purge_nonce'])), 'purgecf_cf_purge_redirect_nonce');
         ?>
         <div class="wrap">
@@ -276,6 +279,18 @@ class PurgeCF_Admin {
                                     <td>
                                         <input type="password" id="cloudflare_api_key" name="<?php echo esc_attr($this->option_name); ?>[api_key]" value="<?php echo esc_attr($api_key_display_value); ?>" class="regular-text" autocomplete="new-password" pattern="[A-Za-z0-9_-]{20,120}" title="API token must be 20 to 120 characters and may contain letters, numbers, underscores, or hyphens.">
                                         <p class="description">Cloudflare dashboard &rarr; Manage account &rarr; Account API Tokens.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">
+                                        <label for="enforce_https">HTTPS Enforcement</label>
+                                    </th>
+                                    <td>
+                                        <label for="enforce_https">
+                                            <input type="checkbox" id="enforce_https" name="<?php echo esc_attr($this->option_name); ?>[enforce_https]" value="1" <?php checked($enforce_https); ?>>
+                                            Enforce HTTPS for API key operations
+                                        </label>
+                                        <p class="description">Enabled by default. Uncheck this only if you need to disable SSL verification for Cloudflare API requests.</p>
                                     </td>
                                 </tr>
                             </table>

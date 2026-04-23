@@ -38,6 +38,7 @@ class PurgeCF_Plugin {
         $options = $this->cache_manager->get_settings();
         $zone_id = isset($options['zone_id']) ? (string) $options['zone_id'] : '';
         $api_key = isset($options['api_key']) ? PurgeCF_Crypto::decrypt_api_key((string) $options['api_key']) : '';
+        $enforce_https = !array_key_exists('enforce_https', $options) ? true : (bool) $options['enforce_https'];
 
         if ($zone_id === '' || $api_key === '') {
             $this->cache_manager->release_purge_lock();
@@ -48,7 +49,7 @@ class PurgeCF_Plugin {
         $this->cache_manager->start_cooldown();
 
         $api_client = new PurgeCF_API();
-        $is_purged = $api_client->purge_everything($zone_id, $api_key);
+        $is_purged = $api_client->purge_everything($zone_id, $api_key, $enforce_https);
 
         if (!$is_purged) {
             $this->cache_manager->release_purge_lock();

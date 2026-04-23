@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 class PurgeCF_API {
     private $last_error_code = 'none';
 
-    public function purge_everything($zone_id, $api_key) {
+    public function purge_everything($zone_id, $api_key, $enforce_https = true) {
         $this->last_error_code = 'none';
 
         if (!$this->is_valid_zone_id($zone_id) || !$this->is_valid_api_token($api_key)) {
@@ -20,7 +20,7 @@ class PurgeCF_API {
             'method'  => 'POST',
             'timeout' => 15,
             'redirection' => 0,
-            'sslverify' => true,
+            'sslverify' => (bool) $enforce_https,
             'user-agent' => 'cf-purge-everything/1.0.0; ' . home_url('/'),
             'headers' => [
                 'Authorization' => 'Bearer ' . $api_key,
